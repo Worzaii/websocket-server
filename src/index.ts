@@ -4,6 +4,12 @@ import express from "express";
 import http from "http";
 import { WebSocketServer } from "ws";
 import { Command } from "./types/command";
+import {
+  registerClient,
+  getClients,
+  removeClient,
+} from "./websocket/connection-manager";
+import crypto from "crypto";
 
 const app = express();
 
@@ -18,6 +24,15 @@ app.get("/health", (_, res) => {
 });
 
 wss.on("connection", (ws, req) => {
+  const clientId = crypto.randomUUID();
+
+  registerClient({
+    id: clientId,
+    type: "unknown",
+  });
+
+  console.log("Connected clients:", getClients());
+
   const ip = req.socket.remoteAddress;
 
   console.log(`Client connected from ${ip}`);
@@ -46,6 +61,9 @@ wss.on("connection", (ws, req) => {
 
   ws.on("close", () => {
     console.log(`Client disconnected from ${ip}`);
+    removeClient(clientId);
+
+    console.log("Connected clients:", getClients());
   });
 });
 
