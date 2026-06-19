@@ -1,6 +1,6 @@
 import { registerCommand } from "./router";
 
-registerCommand("debug.echo", async (command) => {
+registerCommand("command-payload", async (command) => {
   return {
     requestId: command.requestId,
     success: true,
