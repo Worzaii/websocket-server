@@ -16,6 +16,7 @@ export async function handleCommand(
 
   if (!handler) {
     return {
+      requestId: command.requestId,
       success: false,
       message: `Unknown action: ${command.action}`,
     };
