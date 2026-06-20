@@ -1,7 +1,39 @@
 import { getTwitchAppAccessToken } from "./twitch-auth";
 
+interface TwitchStream {
+  id: string;
+  user_id: string;
+  user_login: string;
+  user_name: string;
+  game_id: string;
+  game_name: string;
+  type: string;
+  title: string;
+  tags: string[];
+  viewer_count: number;
+  started_at: string;
+  language: string;
+  thumbnail_url: string;
+}
+
 export class TwitchClient {
   async getUser(login: string) {
+    const data = await this.getHelixData(
+      `/users?login=${encodeURIComponent(login)}`,
+    );
+
+    return data.data?.[0];
+  }
+
+  async getStreamByLogin(login: string): Promise<TwitchStream | undefined> {
+    const data = await this.getHelixData(
+      `/streams?user_login=${encodeURIComponent(login)}`,
+    );
+
+    return data.data?.[0];
+  }
+
+  private async getHelixData(path: string) {
     const clientId = process.env.TWITCH_CLIENT_ID;
 
     if (!clientId) {
@@ -9,15 +41,12 @@ export class TwitchClient {
     }
 
     const accessToken = await getTwitchAppAccessToken();
-    const response = await fetch(
-      `https://api.twitch.tv/helix/users?login=${encodeURIComponent(login)}`,
-      {
-        headers: {
-          "Client-Id": clientId,
-          Authorization: `Bearer ${accessToken}`,
-        },
+    const response = await fetch(`https://api.twitch.tv/helix${path}`, {
+      headers: {
+        "Client-Id": clientId,
+        Authorization: `Bearer ${accessToken}`,
       },
-    );
+    });
 
     if (!response.ok) {
       const errorBody = await response.text();
@@ -26,9 +55,7 @@ export class TwitchClient {
       );
     }
 
-    const data = await response.json();
-
-    return data.data?.[0];
+    return response.json();
   }
 }
 
