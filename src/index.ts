@@ -1,3 +1,4 @@
+import "dotenv/config";
 import "./commands";
 import { handleCommand } from "./commands/router";
 import express from "express";
@@ -21,6 +22,10 @@ const wss = new WebSocketServer({
 
 app.get("/health", (_, res) => {
   res.send("OK");
+});
+
+app.get("/auth/twitch/callback", (_, res) => {
+  res.send("Twitch authentication callback");
 });
 
 wss.on("connection", (ws, req) => {
