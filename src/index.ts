@@ -11,6 +11,11 @@ import {
   removeClient,
 } from "./websocket/connection-manager";
 import crypto from "crypto";
+import {
+  exchangeTwitchCodeForUserToken,
+  getTwitchAuthorizationUrl,
+  verifyTwitchAuthorizationState,
+} from "./services/twitch/twitch-auth";
 
 const app = express();
 
@@ -24,8 +29,41 @@ app.get("/health", (_, res) => {
   res.send("OK");
 });
 
-app.get("/auth/twitch/callback", (_, res) => {
-  res.send("Twitch authentication callback");
+app.get("/auth/twitch/callback", async (req, res) => {
+  if (typeof req.query.error === "string") {
+    res.status(400).send(`Twitch authorization failed: ${req.query.error}`);
+    return;
+  }
+
+  const code = req.query.code;
+  const state = req.query.state;
+
+  if (typeof code !== "string") {
+    res.status(400).send("Missing Twitch authorization code");
+    return;
+  }
+
+  if (typeof state !== "string" || !verifyTwitchAuthorizationState(state)) {
+    res.status(400).send("Invalid Twitch authorization state");
+    return;
+  }
+
+  try {
+    const token = await exchangeTwitchCodeForUserToken(code);
+
+    res.send(`
+      <h1>Twitch connected</h1>
+      <p>Scopes: ${token.scope.join(", ")}</p>
+      <p>User token saved on the websocket server.</p>
+    `);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Failed to exchange Twitch authorization code");
+  }
+});
+
+app.get("/auth/twitch", (_, res) => {
+  res.redirect(getTwitchAuthorizationUrl());
 });
 
 wss.on("connection", (ws, req) => {
@@ -46,21 +84,29 @@ wss.on("connection", (ws, req) => {
 
     console.log(`Received: ${text}`);
 
+    let requestId: string | undefined;
+
     try {
       const command: Command = JSON.parse(text);
+      requestId = command.requestId;
 
       const response = await handleCommand(command);
+
+      console.log(`Sending: ${JSON.stringify(response)}`);
 
       ws.send(JSON.stringify(response));
     } catch (error) {
       console.error(error);
 
-      ws.send(
-        JSON.stringify({
-          success: false,
-          message: "Invalid command format",
-        }),
-      );
+      const response = {
+        requestId,
+        success: false,
+        message: error instanceof Error ? error.message : "Command failed",
+      };
+
+      console.log(`Sending: ${JSON.stringify(response)}`);
+
+      ws.send(JSON.stringify(response));
     }
   });
 
