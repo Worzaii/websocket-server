@@ -16,6 +16,10 @@ interface TwitchUserToken {
   token_type: string;
 }
 
+interface StoredTwitchUserToken extends TwitchUserToken {
+  expires_at: string;
+}
+
 let cachedToken: {
   accessToken: string;
   expiresAt: number;
@@ -137,18 +141,71 @@ export async function exchangeTwitchCodeForUserToken(
   return token;
 }
 
-async function saveTwitchUserToken(token: TwitchUserToken): Promise<void> {
+export async function getTwitchUserAccessToken(): Promise<string> {
+  const token = await readTwitchUserToken();
+  const expiresAt = new Date(token.expires_at).getTime();
+
+  if (expiresAt > Date.now() + 60_000) {
+    return token.access_token;
+  }
+
+  const refreshedToken = await refreshTwitchUserToken(token.refresh_token);
+
+  return refreshedToken.access_token;
+}
+
+async function refreshTwitchUserToken(
+  refreshToken: string,
+): Promise<TwitchUserToken> {
+  const { clientId, clientSecret } = getTwitchClientCredentials();
+  const body = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+  });
+
+  const response = await fetch("https://id.twitch.tv/oauth2/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(
+      `Twitch token refresh failed: ${response.status} ${response.statusText} ${errorBody}`,
+    );
+  }
+
+  const token = (await response.json()) as TwitchUserToken;
+  await saveTwitchUserToken(token);
+
+  return token;
+}
+
+async function readTwitchUserToken(): Promise<StoredTwitchUserToken> {
+  try {
+    const tokenFile = await fs.readFile(tokenStorePath, "utf8");
+    return JSON.parse(tokenFile) as StoredTwitchUserToken;
+  } catch {
+    throw new Error("No Twitch user token found. Visit /auth/twitch first.");
+  }
+}
+
+async function saveTwitchUserToken(
+  token: TwitchUserToken,
+): Promise<StoredTwitchUserToken> {
   await fs.mkdir(path.dirname(tokenStorePath), { recursive: true });
 
-  await fs.writeFile(
-    tokenStorePath,
-    JSON.stringify(
-      {
-        ...token,
-        expires_at: new Date(Date.now() + token.expires_in * 1000).toISOString(),
-      },
-      null,
-      2,
-    ),
-  );
+  const storedToken = {
+    ...token,
+    expires_at: new Date(Date.now() + token.expires_in * 1000).toISOString(),
+  };
+
+  await fs.writeFile(tokenStorePath, JSON.stringify(storedToken, null, 2));
+
+  return storedToken;
 }
