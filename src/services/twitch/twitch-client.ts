@@ -2,41 +2,11 @@ import {
   getTwitchAppAccessToken,
   getTwitchUserAccessToken,
 } from "./twitch-auth";
-
-interface TwitchUser {
-  id: string;
-  login: string;
-  display_name: string;
-}
-
-interface TwitchStream {
-  id: string;
-  user_id: string;
-  user_login: string;
-  user_name: string;
-  game_id: string;
-  game_name: string;
-  type: string;
-  title: string;
-  tags: string[];
-  viewer_count: number;
-  started_at: string;
-  language: string;
-  thumbnail_url: string;
-}
-
-interface TwitchCustomReward {
-  id: string;
-  broadcaster_id: string;
-  broadcaster_login: string;
-  broadcaster_name: string;
-  title: string;
-  prompt: string;
-  cost: number;
-  is_enabled: boolean;
-  is_paused: boolean;
-  is_in_stock: boolean;
-}
+import type {
+  TwitchUser,
+  TwitchStream,
+  TwitchCustomReward,
+} from "./twitch-types";
 
 export class TwitchClient {
   async getUser(login: string): Promise<TwitchUser | undefined> {
@@ -55,9 +25,7 @@ export class TwitchClient {
     return data.data?.[0];
   }
 
-  async getCustomRewards(
-    broadcasterId: string,
-  ): Promise<TwitchCustomReward[]> {
+  async getCustomRewards(broadcasterId: string): Promise<TwitchCustomReward[]> {
     const data = await this.getHelixData(
       `/channel_points/custom_rewards?broadcaster_id=${encodeURIComponent(
         broadcasterId,

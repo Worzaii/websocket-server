@@ -1,24 +1,11 @@
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
-
-interface TwitchAppToken {
-  access_token: string;
-  expires_in: number;
-  token_type: string;
-}
-
-interface TwitchUserToken {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-  scope: string[];
-  token_type: string;
-}
-
-interface StoredTwitchUserToken extends TwitchUserToken {
-  expires_at: string;
-}
+import type {
+  TwitchAppToken,
+  TwitchUserToken,
+  StoredTwitchUserToken,
+} from "./twitch-types";
 
 let cachedToken: {
   accessToken: string;
@@ -31,7 +18,11 @@ const twitchRedirectUri =
   process.env.TWITCH_REDIRECT_URI ??
   "http://localhost:3000/auth/twitch/callback";
 
-const tokenStorePath = path.join(process.cwd(), "data", "twitch-user-token.json");
+const tokenStorePath = path.join(
+  process.cwd(),
+  "data",
+  "twitch-user-token.json",
+);
 
 function getTwitchClientCredentials() {
   const clientId = process.env.TWITCH_CLIENT_ID;
@@ -205,7 +196,13 @@ async function saveTwitchUserToken(
     expires_at: new Date(Date.now() + token.expires_in * 1000).toISOString(),
   };
 
-  await fs.writeFile(tokenStorePath, JSON.stringify(storedToken, null, 2));
+  try {
+    await fs.writeFile(tokenStorePath, JSON.stringify(storedToken, null, 2));
+  } catch (error) {
+    console.error("Failed to save Twitch user token:", error);
+    process.exit(2);
+    throw new Error("Failed to save Twitch user token");
+  }
 
   return storedToken;
 }
