@@ -33,3 +33,17 @@ It's been a long time coming project that I've wanted to set up for my streams, 
 ## Setup
 
 Make sure to have an application over on Twitch [here](https://dev.twitch.tv/console/apps/create), you'll need to fill out your TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET in the .env file you'll need to create, copy this from the .env.example file in the root directory.
+
+### Dockerization
+
+To start up the docker, run the following command to build it locally (replace version with format x.x.x):
+
+```bash
+docker build -t websocket-server:VERSION .
+```
+
+Then to run the server:
+
+```bash
+docker run -v .env:/app/.env --name websocket-server -p 3000:3000 -d websocket-server:VERSION
+```

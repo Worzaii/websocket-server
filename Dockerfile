@@ -19,6 +19,8 @@ RUN npm ci --omit=dev
 # Copy over the stuff we built in the first image.
 COPY --from=build /app/dist ./dist
 # Make a user, expose the correct port, and make a healthcheck.
+
+RUN chown -R node:node /app
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
