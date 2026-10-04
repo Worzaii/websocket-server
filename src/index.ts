@@ -17,12 +17,20 @@ import {
   verifyTwitchAuthorizationState,
 } from "./services/twitch/twitch-auth";
 
-if (
-  process.env.TWITCH_CLIENT_ID?.length === 0 ||
-  process.env.TWITCH_CLIENT_SECRET?.length === 0
-) {
+const requiredEnvironmentVariables = [
+  "TWITCH_CLIENT_ID",
+  "TWITCH_CLIENT_SECRET",
+] as const;
+
+const missingEnvironmentVariables = requiredEnvironmentVariables.filter(
+  (variable) => !process.env[variable]?.trim(),
+);
+
+if (missingEnvironmentVariables.length > 0) {
   console.error(
-    "Twitch client credentials are not set. Make sure you've created and updated your .env file with the correct values for TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET. Copy from .env.example and fill in the values.",
+    `Missing required environment variable${
+      missingEnvironmentVariables.length === 1 ? "" : "s"
+    }: ${missingEnvironmentVariables.join(", ")}. Create or update .env from .env.example before starting the server.`,
   );
   process.exit(1);
 }
